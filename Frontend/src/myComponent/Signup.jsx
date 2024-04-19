@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import './Login.css'
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { Link } from 'react-router-dom';
 
 function Signup() {
     const [values,setValues] = useState({
@@ -15,7 +16,14 @@ function Signup() {
     {
         e.preventDefault()
         axios.post('http://localhost:4200/register',values)
-        .then(res => console.log(res))
+        .then(res => {
+            if(res.data.Status == "success"){
+                navigate('/login')
+            }
+            else{
+                alert("Error")
+            }
+        })
         .then(err => console.log(err));
         
 
@@ -42,6 +50,7 @@ function Signup() {
                     
                
                 <button type="submit">Signup</button>
+                <Link to="/login">Login</Link>
             </form>
             </div>
         

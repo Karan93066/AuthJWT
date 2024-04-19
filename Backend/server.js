@@ -14,7 +14,11 @@ app.use(express.static('public'));
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use(cors());
+app.use(cors({
+  origin:["http://localhost:5173"],
+  methods: ["GET","POST"],
+  credentials: true
+}));
 app.use(cookieParser());
 
 const connection = mysql.createConnection({
@@ -28,7 +32,25 @@ connection.connect((err) =>{
     if(err) throw err;
     console.log('Mysql Connected...');
   });
+const verifyUser = (req,res,next)=>{
+  const token = req.cookies.token;
+  if(!token){
+    return res.json({Error :"You are Not authenticated"})
+  } else{
+    jwt.verify(token,"jwt-secret-key",(err,decoded)=>{
+      if(err){
+    return res.json({Error :"Token is not okie"})
 
+      }else{
+        req.name = decoded.name;
+        next();
+      }
+    })
+  }
+}
+  app.get('/',verifyUser,(req,res)=>{
+        return res.json({Status:"Success",name:req.name})
+  })
   app.post('/register', (req, res) => {
     const name = req.body.name;
     const email = req.body.email;
@@ -50,7 +72,40 @@ connection.connect((err) =>{
     });
 });
 
+app.post('/login',(req,res)=>{
+  const email = req.body.email;
+  const query = 'SELECT * FROM login WHERE email = "'+email+'"';
+  connection.query(query, [email],(err,data)=>{
+    if(err) return res.json({Error:"Login error in server"});
+    if(data.length>0){
+      bcrypt.compare(req.body.password.toString(), data[0].password,(err,response) =>{
+      if(err) return res.json({Error:"Password Compare error"});
+      if(response){
+        const name = data[0].name;
+        const token = jwt.sign({name},"jwt-secret-key",{expiresIn:'1d'});
+        res.cookie('token',token);
+        res.cookie('token', token);
+console.log("Token set in cookie:", token);
 
+        return res.json({ Status: "Success" });
+      }
+      else{
+        return res.json({ Error: "Password not matched" });
+      }
+
+      })
+     } else{
+      return res.json({ Error: "No Email existed" });
+
+      }
+   
+  })
+})
+
+app.get('/logout',(req,res) => {
+      res.clearCookie('token');
+      return res.json({Status:"Success"})
+})
 app.listen(4200,()=>{
     console.log(`express server running on 4200`);
 });
